@@ -1,0 +1,13 @@
+
+puts 'Input the Input Values separated by a comma'
+input_string = gets.chomp
+input_array = Array[-1] + CSV.parse(input_string, converters: :numeric).flatten
+
+input_vector_size = input_array.size
+input_vector = Matrix[input_array]
+puts input_vector
+
+puts 'Input the learning Rate 0.1 < eta < 0.4'
+eta_string = gets.chomp
+eta = CSV.parse(eta_string, converters: :numeric)
+
