@@ -4,11 +4,12 @@
 
 require 'matrix'
 require 'csv'
+require 'rinruby'
 
 # Read in the data--input vector, target vector, eta, weight matrix size
 input_file_array= CSV.read('input_file.csv', converters: :numeric)
 input_file_index = input_file_array[0][0]
-input_matrix_range = 1..input_file_index #raqnges of the number of input vectors
+input_matrix_range = 1..input_file_index #ranges of the number of input vectors
 input_matrix = Matrix[] #creates a matrix of all possible input vectors, each row is an input vector
 
 input_matrix_range.each do |row|
@@ -41,7 +42,7 @@ until success
   puts input_matrix_pointer
   puts "Weight Matrix: "
   puts weight_matrix
-  
+
   x_matrix = Matrix[input_matrix.row(input_matrix_pointer)]
   t = target_vector.column(input_matrix_pointer).[](0)
   y_matrix = x_matrix * weight_matrix
@@ -65,16 +66,47 @@ until success
     success_tracker = 0
 
     weight_matrix = weight_matrix + eta*(t-y)* x_matrix.transpose # re-calculate the weight matrix
-    
+
   end
   puts "Hit Target?"
   puts hit_target
   input_matrix_pointer = (input_matrix_pointer+=1) % input_matrix.row_count if success == false
   puts "Sucess (True or False): "
   puts success
-    puts '************************'  end
+    puts '************************'
+end
 
 puts '+++++++++++++++'
 puts 'Finished and the Weight Matrix is:'
 puts weight_matrix
 puts '+++++++++++++++'
+
+puts 'Do you want to try it out (Y/N)?'
+answer = gets.chomp
+while answer == 'Y' || answer == 'y'
+  puts 'Input values x,y'
+  input = gets.chomp.split(',')
+  input = input.map{|a| a.to_f}
+  input = [-1] + input
+  i_matrix = Matrix[input]
+
+  output = i_matrix * weight_matrix
+  puts "output from input:"
+  puts output
+
+  yout = output[0,0]
+  if yout > 0
+    result = 1
+  else result = 0
+
+  end
+  puts "Result:"
+  puts result
+
+  puts "Another (Y/N)?"
+  answer = gets.chomp
+
+
+
+end
+puts 'See ya!'
