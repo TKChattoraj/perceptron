@@ -10,7 +10,11 @@ require 'rinruby'
 # Read in the data--This will be an array of arrays
 input_file_array = CSV.read('pima_input.csv', converters: :numeric)
 
-#
+
+# Shortened input file array:
+
+#input_file_array = [[6,148,72,35,0,33.6,0.627,50,1], [1,85,66,29,0,26.6,0.351,31,0], [8,183,64,0,0,23.3,0.672,32,1], [1,89,66,23,94,28.1,0.167,21,0]]
+
 #
 # class_0_inputs = []
 # class_1_inputs =[]
@@ -65,23 +69,23 @@ input_file_array = CSV.read('pima_input.csv', converters: :numeric)
 
 
 class Perceptron
-
+  # file_array is the input file-each row is a combination of the input vector and the target vector
+  # n_input is the dimension of the input vector
   def initialize(file_array, n_input)
     input_row_array = []
     target_row_array = []
     file_array.each do |file_row|
-       new_input_row = [-1] + file_row.slice(0..n_input-1)
+       new_input_row = file_row.slice(0...n_input)
        input_row_array<<new_input_row
-       new_target_row = file_row.slice(n_input...file_row.length-1)
+       new_target_row = file_row.slice(n_input..file_row.length-1)
        target_row_array<<new_target_row
-
     end
     @input_matrix = Matrix.rows(input_row_array)
     @target_matrix = Matrix.rows(target_row_array)
 
     weight_matrix_columns = @target_matrix.column_size
     weight_matrix_rows = @input_matrix.column_size
-    @weight_matrix = Matrix.build(weight_matrix_rows, weight_matrix_columns){rand}
+    @weight_matrix = Matrix.build(weight_matrix_rows, weight_matrix_columns){rand*0.1-0.05}
     @eta = 0.25
 
   end
@@ -105,12 +109,112 @@ class Perceptron
   def eta=(eta)
     @eta = eta
   end
+
+  def train
+    iterations = 100
+    trainned = false
+    i = 0
+
+    while ((i < iterations) && !trainned )
+      puts i
+      x_matrix = Matrix[@input_matrix.row(i)]
+      output_matrix = @input_matrix * @weight_matrix
+
+      activation_matrix = output_matrix.map do |y|
+        if y > 0
+          1
+        else
+          0
+        end
+      end
+
+      delta = @eta*(@input_matrix.transpose * (activation_matrix - @target_matrix))
+
+       @weight_matrix = @weight_matrix - delta
+       puts @weight_matrix
+      i +=1
+    end
+
+  end
+
+  def predict
+
+    y = @input_matrix * @weight_matrix
+    activation_matrix = y.map do |y|
+      if y > 0
+        1
+      else
+        0
+      end
+    end
+
+    confusion_array = [[0,0], [0,0]]
+    activation_matrix.each_with_index do |result, row, col|
+      t = @target_matrix[row, 0]
+      confusion_array[t][result]  += 1
+    end
+    confusion_matrix = Matrix.rows(confusion_array)
+    puts confusion_matrix
+  end
+
 end
 
-pcn = Perceptron.new(input_file_array, 7)
+def normalize_vector(vector)
+  # normalize a vector
+  # calculate its mean and variance ddof=0--denominator = length
+  # output is an array
+  array = vector.to_a()
+  puts array
+  R.assign "column", array
 
-#puts pcn.input_matrix
-puts pcn.weight_matrix
+  R.eval <<EOF
+  x <- mean(column)
+  length = length(column)
+  variance = var(column) * (length-1)/length
+  column_norm = (column - x)/variance
+EOF
+
+  mean = R.pull "x"
+  var = R.pull "variance"
+  normalize = R.pull "column_norm"
+  puts mean
+  puts var
+  puts normalize
+  #normalize is an array
+  normalize
+end
+
+
+
+def build_normalized_matrix(matrix)
+  count = matrix.column_count
+  column_array = []
+  (0...count).each do |index|
+    column = normalize_vector(matrix.column(index))
+    column_array << column
+  end
+  normalized_matrix = Matrix.columns(column_array)
+end
+
+def add_bias_input_column(matrix)
+  rows_array = matrix.to_a
+  count = rows_array.count
+  new_rows_array = []
+  (0...count).each do |index|
+    new_row = [-1] + rows_array[index]
+    new_rows_array << new_row
+  end
+  matrix_with_bias = Matrix.rows(new_rows_array)
+end
+
+
+pcn = Perceptron.new(input_file_array, 8)
+
+normalized_input_matrix = build_normalized_matrix(pcn.input_matrix)
+normalized_input_matrix_with_bias = add_bias_input_column(normalized_input_matrix)
+puts normalized_input_matrix_with_bias
+#pcn.train
+#pcn.predict
 
 
 
