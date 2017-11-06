@@ -1,7 +1,5 @@
 # /Users/tarunchattoraj/RubymineProjects/matrix/matrix-start.rb
 
-
-
 require 'matrix'
 require 'csv'
 require 'rinruby'
@@ -9,64 +7,8 @@ require 'rinruby'
 
 # Read in the data--This will be an array of arrays
 input_file_array = CSV.read('pima_input.csv', converters: :numeric)
-
-
-# Shortened input file array:
-
-#input_file_array = [[6,148,72,35,0,33.6,0.627,50,1], [1,85,66,29,0,26.6,0.351,31,0], [8,183,64,0,0,23.3,0.672,32,1], [1,89,66,23,94,28.1,0.167,21,0]]
-
-#
-# class_0_inputs = []
-# class_1_inputs =[]
-#
-# input_file_array.each do |input_data_row|
-# #   # Class is given as last element in row--9th element--as either a 0 or 1
-#   if input_data_row[8] == 0
-#     class_0_inputs << input_data_row.take(8)
-#   elsif input_data_row[8] == 1
-#     class_1_inputs << input_data_row.take(8)
-#   else
-#   end
-# end
-# puts "Which data should be the x axis? Enter a number 0-7."
-# x = gets.chomp.to_f
-#
-# puts "Which data should be the y axis?  Enter a number 0-7."
-# y = gets.chomp.to_f
-#
-# class0_x_data = []
-# class0_y_data = []
-#
-# class1_x_data = []
-# class1_y_data = []
-#
-# class_0_inputs.each do |i|
-#   class0_x_data << i[x]
-#   class0_y_data << i[y]
-# end
-#
-# class_1_inputs.each do |i|
-#   class1_x_data << i[x]
-#   class1_y_data << i[y]
-# end
-#
-# R.assign "class0_x_data", class0_x_data
-# R.assign "class0_y_data", class0_y_data
-# R.assign "class1_x_data", class1_x_data
-# R.assign "class1_y_data", class1_y_data
-
-
-# R.eval <<EOF
-#   pdf("myplotpdf.pdf")
-#   #  Class 0 is red diamonds.  col=2 is red color and pch=5 is diamond shape
-#   plot(class0_x_data, class0_y_data, col=2, pch=5)
-#   #  Class 1 is green triangles.  col=3 is green color and pch=2 is triangle
-#   points(class1_x_data, class1_y_data, col=3, pch=2)
-#   dev.off()
-# EOF
-
-
-
+#input_file_array = CSV.read('parity_input.csv', converters: :numeric)
+#input_file_array = CSV.read('nand_input.csv', converters: :numeric)
 
 class Perceptron
   # file_array is the input file-each row is a combination of the input vector and the target vector
@@ -81,7 +23,10 @@ class Perceptron
        target_row_array<<new_target_row
     end
     @input_matrix = Matrix.rows(input_row_array)
+    @input_matrix = add_bias_input_column(@input_matrix)
     @target_matrix = Matrix.rows(target_row_array)
+
+
 
     weight_matrix_columns = @target_matrix.column_size
     weight_matrix_rows = @input_matrix.column_size
@@ -110,16 +55,17 @@ class Perceptron
     @eta = eta
   end
 
-  def train
-    iterations = 100
-    trainned = false
+  def batch_train(input_matrix)
+    iterations = 200
+    untrained = true
     i = 0
 
-    while ((i < iterations) && !trainned )
+    while ((i < iterations) && untrained )
       puts i
-      x_matrix = Matrix[@input_matrix.row(i)]
-      output_matrix = @input_matrix * @weight_matrix
+      # train by batch inputs.
 
+      output_matrix = input_matrix * @weight_matrix
+      # Perform the threshold function.  If output is greater than 0 repalce with 1.  If not replace with 0.
       activation_matrix = output_matrix.map do |y|
         if y > 0
           1
@@ -128,18 +74,84 @@ class Perceptron
         end
       end
 
-      delta = @eta*(@input_matrix.transpose * (activation_matrix - @target_matrix))
+      delta = @eta*(input_matrix.transpose * (activation_matrix - @target_matrix))
+      if delta.zero?
+        untrained = false
+      else
+         @weight_matrix = @weight_matrix - delta
+         puts "Weight Matrix"
+         puts @weight_matrix
+      end
+      i +=1
+    end
+    if (i==iterations)
+      puts "Perceptron did NOT learn."
+    else
+      puts "Perceptron learned."
+      puts @weight_matrix
+    end
+  end
 
-       @weight_matrix = @weight_matrix - delta
-       puts @weight_matrix
+  def train(input_matrix)
+    iterations = 100
+    untrained = true
+    errorless_count = 0
+    i = 0
+
+    while ((i < iterations) && untrained )
+      puts i
+      # input_row_index is needed to cycle through the input rows until Perceptron learns
+      input_row_index = i%200
+      puts "input row index"
+      puts input_row_index
+      input_row = Matrix[input_matrix.row(input_row_index)]
+      puts "input_row/target_row/output_row/activation_row"
+      puts input_row
+      target_row = Matrix[@target_matrix.row(input_row_index)]
+      output_row = input_row * @weight_matrix
+      puts target_row
+      puts output_row
+      # Perform the threshold function.  If output is greater than 0 repalce with 1.  If not replace with a 0.
+      activation_row = output_row.map do |y|
+        if y > 0
+          1
+        else
+          0
+        end
+      end
+      puts activation_row
+      puts "delta"
+      delta = @eta*(input_row.transpose * (activation_row - target_row))
+      puts delta
+      if delta.zero?
+        errorless_count += 1
+        puts "delta is zero"
+      else
+         errorless_count = 0
+         @weight_matrix = @weight_matrix - delta
+         puts "Weight Matrix"
+         puts @weight_matrix
+      end
+      if (errorless_count == input_matrix.row_count)
+        untrained = false
+      end
       i +=1
     end
 
+    if (i==iterations)
+      puts "Perceptron did NOT learn."
+    else
+      puts "Perceptron learned:"
+      puts @weight_matrix
+    end
   end
 
-  def predict
 
+
+  def predict
     y = @input_matrix * @weight_matrix
+    puts "Y Output Matrix"
+    puts y
     activation_matrix = y.map do |y|
       if y > 0
         1
@@ -147,17 +159,37 @@ class Perceptron
         0
       end
     end
-
+    puts "Activation Matrix"
+    puts activation_matrix
     confusion_array = [[0,0], [0,0]]
     activation_matrix.each_with_index do |result, row, col|
-      t = @target_matrix[row, 0]
+      t = @target_matrix[row, col]
       confusion_array[t][result]  += 1
     end
     confusion_matrix = Matrix.rows(confusion_array)
-    puts confusion_matrix
   end
-
 end
+# end Class Perceptron
+
+
+def plot_two_vectors(vector1, vector2)
+# Plots two vectors where x axis is the vector position.
+# Fore example, x axis is 0 then y is vector[0]
+  array1 = vector1.to_a[0...50]
+  array2 = vector2.to_a[0...50]
+
+  R.assign "array1", array1
+  R.assign "array2", array2
+
+R.eval <<EOF
+  pdf("vector_plots.pdf")
+  # print plot to a file vector_plots.pdf
+  plot(array1, type="o", col="blue")
+  lines(array2, type="o", pch=22, lty=2, col="red")
+  dev.off()
+EOF
+end
+
 
 def normalize_vector(vector)
   # normalize a vector
@@ -171,7 +203,18 @@ def normalize_vector(vector)
   x <- mean(column)
   length = length(column)
   variance = var(column) * (length-1)/length
-  column_norm = (column - x)/variance
+
+  # check to see if the variance = 0, meaning all the data in a column is the same
+  # if so, the the column values should be set to zero.
+  # Need to think about whether this is a valid assumption.
+  # It seems to be as it will maintain the shape of the column vector
+
+  if (variance == 0) {
+    column_norm = column - column
+  } else {
+    column_norm = (column - x)/variance
+  }
+
 EOF
 
   mean = R.pull "x"
@@ -207,117 +250,49 @@ def add_bias_input_column(matrix)
   matrix_with_bias = Matrix.rows(new_rows_array)
 end
 
-
-pcn = Perceptron.new(input_file_array, 8)
-
-normalized_input_matrix = build_normalized_matrix(pcn.input_matrix)
-normalized_input_matrix_with_bias = add_bias_input_column(normalized_input_matrix)
-puts normalized_input_matrix_with_bias
-#pcn.train
-#pcn.predict
+###### End of Methods ###########
 
 
 
-# input_file_index = input_file_array[0][0]
-# input_matrix_range = 1..input_file_index #ranges of the number of input vectors
-# input_matrix = Matrix[] #creates a matrix of all possible input vectors, each row is an input vector
-#
-# input_matrix_range.each do |row|
-#   new_row = [-1] + input_file_array[row]
-#   input_matrix = Matrix.rows(input_matrix.to_a<<new_row)
-# end
-# puts input_matrix
-#
-# input_file_index+=1
-# target_vector = Matrix[input_file_array[input_file_index]] #all the correct outputs as a one row matrix
-# puts target_vector
-#
-# input_file_index+=1
-# eta = input_file_array[input_file_index][0]
-# puts eta
-#
-# input_file_index+=1
-# weight_matrix_column_size = input_file_array[input_file_index][0]
-# weight_matrix = Matrix.build(input_matrix.column_size, weight_matrix_column_size){ rand }
-# puts weight_matrix
-#
-#
-# input_matrix_pointer = 0 #gives the location of the current input vector
-# success = false #determines whether we have all inputs returning correct results
-# success_tracker = 0 #tracks how many inputs in a row give correct answers
-#
-# until success
-#   puts '************************'
-#   puts "Input Matrix Pointer: "
-#   puts input_matrix_pointer
-#   puts "Weight Matrix: "
-#   puts weight_matrix
-#
-#   x_matrix = Matrix[input_matrix.row(input_matrix_pointer)]
-#   t = target_vector.column(input_matrix_pointer).[](0)
-#   y_matrix = x_matrix * weight_matrix
-#   y = y_matrix[0,0]
-#   puts "Y:"
-#   puts y
-#   if y > 0
-#     result = 1
-#   else result = 0
-#
-#   end
-#   if result == t
-#     hit_target = true
-#     success_tracker += 1
-#     if success_tracker == input_matrix.row_count
-#       success = true
-#     end
-#
-#    else
-#     hit_target = false
-#     success_tracker = 0
-#
-#     weight_matrix = weight_matrix + eta*(t-y)* x_matrix.transpose # re-calculate the weight matrix
-#
-#   end
-#   puts "Hit Target?"
-#   puts hit_target
-#   input_matrix_pointer = (input_matrix_pointer+=1) % input_matrix.row_count if success == false
-#   puts "Sucess (True or False): "
-#   puts success
-#     puts '************************'
-# end
-#
-# puts '+++++++++++++++'
-# puts 'Finished and the Weight Matrix is:'
-# puts weight_matrix
-# puts '+++++++++++++++'
-#
-# puts 'Do you want to try it out (Y/N)?'
-# answer = gets.chomp
-# while answer == 'Y' || answer == 'y'
-#   puts 'Input values x,y'
-#   input = gets.chomp.split(',')
-#   input = input.map{|a| a.to_f}
-#   input = [-1] + input
-#   i_matrix = Matrix[input]
-#
-#   output = i_matrix * weight_matrix
-#   puts "output from input:"
-#   puts output
-#
-#   yout = output[0,0]
-#   if yout > 0
-#     result = 1
-#   else result = 0
-#
-#   end
-#   puts "Result:"
-#   puts result
-#
-#   puts "Another (Y/N)?"
-#   answer = gets.chomp
-#
-#
-#
-# end
+#normalized_input_matrix = build_normalized_matrix(pcn.input_matrix)
+
+#normalized_column = normalized_input_matrix.column(0)
+#input_column = pcn.input_matrix.column(0)
+#plot_two_vectors(input_column, normalized_column)
+puts "************************************************************************"
+puts "************************************************************************"
+puts "************************************************************************"
+puts "************************************************************************"
+puts "************************************************************************"
+puts "************************************************************************"
+puts "************************************************************************"
+puts "************************************************************************"
+puts "train"
+simple_train = Perceptron.new(input_file_array, 8)
+simple_train.train(build_normalized_matrix(simple_train.input_matrix))
+simple_train_confusion = simple_train.predict
+simple_percentage = (simple_train_confusion[0,0]+simple_train_confusion[1,1]).fdiv(simple_train_confusion[0,0]+simple_train_confusion[1,1]+ simple_train_confusion[0,1]+simple_train_confusion[1,0])
+
+puts "00000000000000000000000000000000000000000000000000000000000000000000000"
+puts "00000000000000000000
+000000000000000000000000000000000000000000000000000"
+puts "00000000000000000000000000000000000000000000000000000000000000000000000"
+puts "00000000000000000000000000000000000000000000000000000000000000000000000"
+puts "00000000000000000000000000000000000000000000000000000000000000000000000"
+puts "00000000000000000000000000000000000000000000000000000000000000000000000"
+puts "00000000000000000000000000000000000000000000000000000000000000000000000"
+puts "00000000000000000000000000000000000000000000000000000000000000000000000"
+puts "batch_train"
+batch_train = Perceptron.new(input_file_array, 8)
+batch_train.batch_train(build_normalized_matrix(batch_train.input_matrix))
+batch_train_confusion = batch_train.predict
+batch_percentage = (batch_train_confusion[0,0]+batch_train_confusion[1,1]).fdiv(batch_train_confusion[0,0]+batch_train_confusion[1,1]+batch_train_confusion[0,1]+batch_train_confusion[1,0])
+puts "simple confusion"
+puts simple_train_confusion
+puts simple_percentage
+puts "batch confusion"
+puts batch_train_confusion
+puts batch_percentage
+
 
 puts 'See ya!'
